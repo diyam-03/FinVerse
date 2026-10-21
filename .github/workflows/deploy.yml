@@ -1,0 +1,25 @@
+# Manual deploy: GitHub -> Actions tab -> "Deploy to AWS" -> Run workflow.
+# Needs the repo secret AWS_ROLE_ARN (an IAM role GitHub can assume via OIDC). See DEPLOY.md, section 3.
+name: Deploy to AWS
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: aws-actions/setup-sam@v2
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ap-south-1
+      - name: Deploy stack and upload frontend
+        run: bash deploy.sh

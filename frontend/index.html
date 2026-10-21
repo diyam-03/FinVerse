@@ -1,0 +1,1118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FinVerse | Your Financial Digital Twin</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232d8cf0'/%3E%3Ctext x='16' y='23' font-size='20' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3EF%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="chart.umd.js"></script>
+<script src="config.js"></script>
+<style>
+:root{
+  --bg:#070b14; --card:rgba(255,255,255,.055); --line:rgba(255,255,255,.11); --rule:rgba(255,255,255,.07); --soft:rgba(255,255,255,.04);
+  --text:#e9eefb; --muted:#98a2bd; --accent:#60a5fa; --accent2:#2dd4bf;
+  --good:#34d399; --bad:#f87171; --warn:#fb923c; --gap:18px;
+  --hl:inset 0 1px 0 rgba(255,255,255,.14);
+  --deep:0 22px 44px -18px rgba(0,0,0,.65),0 3px 8px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0}
+html{color-scheme:dark}
+body{font-family:Manrope,system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.45;font-size:14px;position:relative}
+/* soft moving light behind the glass */
+body::before{content:"";position:fixed;inset:-15%;z-index:0;pointer-events:none;
+  background:radial-gradient(38% 34% at 14% 18%,rgba(45,212,191,.20),transparent 70%),
+             radial-gradient(40% 38% at 86% 8%,rgba(96,165,250,.26),transparent 70%),
+             radial-gradient(46% 42% at 72% 96%,rgba(99,102,241,.14),transparent 70%);
+  animation:drift 28s ease-in-out infinite alternate}
+@keyframes drift{to{transform:translate3d(3%,2.5%,0) scale(1.07)}}
+@media(prefers-reduced-motion:reduce){body::before{animation:none}}
+header,main{position:relative;z-index:1}
+
+/* header + tabs */
+header{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 32px;background:rgba(9,13,24,.55);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:12px}
+.logo h1{font-size:20px;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+.logo p{font-size:12px;color:var(--muted)}
+.tabs{display:flex;gap:4px;padding:4px;border-radius:14px;background:rgba(0,0,0,.28);border:1px solid var(--line);box-shadow:inset 0 2px 6px rgba(0,0,0,.35);overflow-x:auto}
+.tabs button{background:none;box-shadow:none;border:0;border-radius:10px;padding:8px 18px;color:var(--muted);font-weight:600;white-space:nowrap}
+.tabs button:hover{color:var(--text)}
+.tabs button.on{color:#fff;background:linear-gradient(180deg,rgba(255,255,255,.17),rgba(255,255,255,.06));box-shadow:var(--hl),0 4px 10px rgba(0,0,0,.4),0 1px 0 rgba(0,0,0,.5)}
+
+/* tab visibility */
+body:not([data-tab="sim"]) [data-v="sim"],
+body:not([data-tab="plan"]) [data-v="plan"],
+body:not([data-tab="swp"]) [data-v="swp"]{display:none}
+
+main{display:grid;grid-template-columns:410px minmax(0,1fr);gap:var(--gap);padding:24px 32px 50px;max-width:1560px;margin:auto;align-items:start}
+@media(max-width:1050px){main{grid-template-columns:1fr;padding:16px}header{padding:12px 16px}}
+.stack{display:flex;flex-direction:column;gap:var(--gap);min-width:0}
+
+/* glass surface */
+.card{background:linear-gradient(155deg,rgba(255,255,255,.085),rgba(255,255,255,.03)),rgba(8,13,26,.46);border:1px solid var(--line);border-radius:18px;
+  box-shadow:var(--hl),var(--deep);backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%)}
+.card{padding:20px}
+.card h2{font-size:14px;font-weight:700;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:26px}
+.card h2>span:first-child::before{content:"";display:inline-block;width:4px;height:14px;border-radius:3px;background:linear-gradient(var(--accent),var(--accent2));margin-right:9px;vertical-align:-2px;box-shadow:0 0 10px rgba(96,165,250,.6)}
+.card h2 .acts{display:flex;gap:8px}
+.card h2 .note{font-weight:500;font-size:12px;color:var(--muted)}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:600}
+input,select{width:100%;background:rgba(0,0,0,.28);border:1px solid var(--line);color:var(--text);border-radius:11px;padding:9px 12px;font:inherit;font-size:14px;font-weight:500;outline:none;transition:.15s;height:40px;box-shadow:inset 0 2px 5px rgba(0,0,0,.3)}
+input:focus,select:focus{border-color:rgba(96,165,250,.8);box-shadow:inset 0 2px 5px rgba(0,0,0,.3),0 0 0 3px rgba(96,165,250,.2)}
+select option{background:#101729}
+.inp{position:relative}
+.inp[data-pre] input{padding-left:26px}
+.inp[data-suf] input{padding-right:42px}
+.inp[data-pre]::before,.inp[data-suf]::after{position:absolute;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none;z-index:2}
+.inp[data-pre]::before{content:attr(data-pre);left:11px}
+.inp[data-suf]::after{content:attr(data-suf);right:11px;font-size:12px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.g5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+@media(max-width:1250px){.g4{grid-template-columns:1fr 1fr}.g5{grid-template-columns:1fr 1fr}}
+.field{margin-bottom:12px}
+.grp{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--accent2);margin:18px 0 10px;font-weight:700}
+.grp:first-of-type{margin-top:4px}
+.hint{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.45}
+.row-item{display:grid;gap:10px;padding:12px;border:1px solid var(--line);border-radius:13px;margin-bottom:12px;position:relative;background:rgba(0,0,0,.18);box-shadow:var(--hl)}
+.row-item:last-child{margin-bottom:0}
+.row-item .rm{position:absolute;top:7px;right:9px;background:none;box-shadow:none;border:0;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:2px 6px}
+.row-item .rm:hover{color:var(--bad);transform:none}
+.row-item>input{width:calc(100% - 26px)}
+.emi{font-size:12px;color:var(--muted);background:rgba(45,212,191,.07);border:1px dashed rgba(45,212,191,.35);border-radius:9px;padding:7px 10px}
+.emi b{color:var(--accent2);font-size:14px}
+
+/* raised 3D buttons */
+button{font:inherit;cursor:pointer;border:0;border-radius:11px;padding:9px 16px;font-weight:700;font-size:14px;transition:transform .1s,box-shadow .1s,background .15s;color:var(--text)}
+.primary{width:100%;height:46px;color:#fff;background:linear-gradient(180deg,#6aaeff,#3b78f0);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 5px 0 #1f4db3,0 12px 22px rgba(59,120,240,.4)}
+.primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 6px 0 #1f4db3,0 16px 26px rgba(59,120,240,.45)}
+.primary:active:not(:disabled){transform:translateY(5px);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 0 0 #1f4db3,0 4px 10px rgba(59,120,240,.35)}
+.ghost{background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,.05));border:1px solid var(--line);box-shadow:var(--hl),0 3px 0 rgba(0,0,0,.45),0 6px 12px rgba(0,0,0,.25)}
+.ghost:hover:not(:disabled){background:linear-gradient(180deg,rgba(255,255,255,.2),rgba(255,255,255,.08))}
+.ghost:active:not(:disabled){transform:translateY(3px);box-shadow:var(--hl),0 0 0 rgba(0,0,0,.45)}
+.small{padding:5px 12px;font-size:12px;border-radius:9px}
+button:disabled{opacity:.4;cursor:not-allowed}
+
+/* top strip */
+.strip{display:flex;gap:var(--gap);flex-wrap:wrap}
+.strip .s{flex:1 1 200px;padding:12px 18px;display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-radius:14px}
+.strip small{font-size:12px;color:var(--muted);font-weight:600}
+.strip b{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums}
+
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);align-items:stretch}
+@media(max-width:1250px){.duo{grid-template-columns:1fr}}
+
+/* DNA */
+.dna{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center}
+.ring{--p:0;width:92px;height:92px;border-radius:50%;background:conic-gradient(var(--accent2),var(--accent) calc(var(--p)*1%),rgba(255,255,255,.08) 0);display:grid;place-items:center;
+  box-shadow:0 0 24px rgba(45,212,191,.25),0 10px 20px rgba(0,0,0,.4)}
+.ring b{width:72px;height:72px;border-radius:50%;background:radial-gradient(circle at 35% 25%,#1b2540,#0b1120);display:grid;place-items:center;font-size:24px;font-weight:800;box-shadow:inset 0 3px 8px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.1)}
+.dna h3{font-size:19px;font-weight:800;letter-spacing:-.01em}
+.dna p{color:var(--muted);font-size:13px;margin:2px 0 10px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:11px;font-weight:600;padding:3px 10px;border-radius:99px;background:rgba(255,255,255,.07);border:1px solid var(--line);box-shadow:var(--hl)}
+.placeholder{color:var(--muted);font-size:14px;display:grid;place-items:center;text-align:center;height:100%;min-height:92px}
+
+/* budget */
+.bud-top{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;margin-bottom:12px}
+.bud-top .big{font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.1;font-variant-numeric:tabular-nums}
+.bud-top small{color:var(--muted);font-size:12px}
+.pill{font-size:12px;font-weight:700;padding:5px 11px;border-radius:99px;white-space:nowrap;border:1px solid transparent}
+.pill.ok{background:rgba(52,211,153,.14);color:#6ee7b7;border-color:rgba(52,211,153,.35)}
+.pill.bad{background:rgba(248,113,113,.14);color:#fca5a5;border-color:rgba(248,113,113,.35)}
+.stackbar{display:flex;height:12px;border-radius:99px;overflow:hidden;background:rgba(0,0,0,.35);gap:2px;box-shadow:inset 0 2px 4px rgba(0,0,0,.5);padding:1px}
+.stackbar div{height:100%;transition:width .4s;border-radius:99px;box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+.legend{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin-top:14px;font-size:12px}
+.legend div{display:flex;align-items:center;gap:7px}
+.legend i{width:9px;height:9px;border-radius:3px;display:inline-block;box-shadow:0 0 8px currentColor}
+.legend span{color:var(--muted)}
+.legend b{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums}
+
+/* pipeline */
+.job{display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px dashed var(--line);font-size:13px;flex-wrap:wrap}
+.job:last-child{border:0;padding-bottom:0}
+.job .name{width:170px;font-weight:700}
+.steps{display:flex;align-items:center;gap:6px;flex:1;min-width:260px}
+.step{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px}
+.step .dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.15)}
+.step.on{color:var(--text)}.step.on .dot{background:var(--warn);box-shadow:0 0 0 4px rgba(251,146,60,.2);animation:pulse 1s infinite}
+.step.done{color:var(--good)}.step.done .dot{background:var(--good);box-shadow:0 0 8px rgba(52,211,153,.7)}
+.bar{flex:0 0 22px;height:1px;background:var(--line)}
+.fail{color:var(--bad)}
+@keyframes pulse{50%{opacity:.45}}
+@keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.up{animation:up .5s ease backwards}
+
+/* KPIs (these tilt in 3D under the cursor) */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--gap)}
+.kpis.k3{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:1250px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpis.k3{grid-template-columns:1fr}}
+.kpi{padding:16px 18px;min-height:118px;display:flex;flex-direction:column;justify-content:space-between}
+.kpi small{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.kpi .v{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:4px 0;font-variant-numeric:tabular-nums}
+.kpi .d{font-size:12px;color:var(--warn);min-height:18px}
+.kpi .d.m{color:var(--muted)}
+.kpi.best .v{color:#6ee7b7}.kpi.med .v{color:#93c5fd}.kpi.worst .v{color:#fca5a5}
+.charts{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:var(--gap);align-items:stretch}
+@media(max-width:1250px){.charts{grid-template-columns:1fr}}
+.chartbox{position:relative;height:340px}
+.chartbox.sm{height:280px}
+.goal{margin-bottom:15px}
+.goal:last-child{margin-bottom:0}
+.goal .top{display:flex;justify-content:space-between;gap:10px;font-size:13px;margin-bottom:6px}
+.goal .top span:last-child{font-weight:800;white-space:nowrap}
+.track{height:9px;border-radius:99px;background:rgba(0,0,0,.35);overflow:hidden;box-shadow:inset 0 2px 4px rgba(0,0,0,.5)}
+.fill{height:100%;border-radius:99px;transition:width .8s;box-shadow:inset 0 1px 0 rgba(255,255,255,.4)}
+
+/* tables */
+.tablewrap{overflow-x:auto}
+.tbl-scroll{overflow:auto;max-height:520px;border:1px solid var(--line);border-radius:13px;background:rgba(0,0,0,.18)}
+.tbl-scroll::-webkit-scrollbar{width:10px;height:10px}.tbl-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:99px}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+td,th{padding:9px 12px;text-align:left;border-bottom:1px solid var(--rule);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.07em;background:rgba(14,20,36,.92);position:sticky;top:0;z-index:1}
+td.n,th.n{text-align:right}
+table tr:hover td{background:rgba(255,255,255,.04)}
+tr.now td{color:var(--muted)}
+tr.last td{font-weight:800;background:rgba(96,165,250,.16)!important;border-top:1px solid rgba(96,165,250,.4)}
+.empty{color:var(--muted);text-align:center;padding:28px 0;font-size:14px}
+.badge{font-size:11px;padding:2px 9px;border-radius:99px;font-weight:700}
+.b-DONE{background:rgba(52,211,153,.15);color:var(--good)}
+.b-FAILED{background:rgba(248,113,113,.15);color:var(--bad)}
+.b-QUEUED,.b-RUNNING{background:rgba(251,146,60,.15);color:var(--warn)}
+
+/* retirement result */
+.res-big{font-size:34px;font-weight:800;letter-spacing:-.025em;line-height:1.12}
+.res-sub{color:var(--muted);margin-top:5px}
+.res-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.mini{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--gap);margin-bottom:18px}
+@media(max-width:700px){.mini{grid-template-columns:1fr}}
+.mini div{border-radius:14px;padding:11px 15px}
+.mini small{display:block;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em}
+.mini b{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums}
+.ctx{font-size:12px;color:var(--muted);margin-bottom:14px}
+.ctx b{color:var(--text)}
+.ctx a{color:var(--accent);cursor:pointer;text-decoration:underline}
+
+/* ---------- small cards: real glass slabs (3D) ----------
+   Each card is an empty 3D container. ::before is the frosted front pane, ::after is a darker back plate
+   sitting behind it, and the text is pushed forward on the Z axis. Tilting the card therefore separates
+   the three layers for real. (backdrop-filter lives on the pane, because it would flatten the 3D on the card itself.) */
+@property --ga{syntax:"<number>";inherits:false;initial-value:0}
+.kpi,.strip .s,.mini div{position:relative;transform-style:preserve-3d;transition:transform .16s ease-out;will-change:transform;
+  --tint:rgba(255,255,255,.09);--edge:var(--line)}
+.kpi::before,.strip .s::before,.mini div::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(240px circle at var(--gx,50%) var(--gy,0%),rgba(255,255,255,calc(var(--ga) * .2)),transparent 62%),
+             linear-gradient(155deg,var(--tint),rgba(255,255,255,.03)),rgba(14,24,48,.42);
+  border:1px solid var(--edge);box-shadow:var(--hl),inset 0 -12px 20px -14px rgba(0,0,0,.5);
+  backdrop-filter:blur(12px) saturate(150%);-webkit-backdrop-filter:blur(12px) saturate(150%);transition:--ga .25s}
+.kpi:hover::before,.strip .s:hover::before,.mini div:hover::before{--ga:1}
+.kpi::after,.strip .s::after,.mini div::after{content:"";position:absolute;inset:4px 3px;border-radius:inherit;pointer-events:none;transform:translateZ(-16px);
+  background:linear-gradient(160deg,rgba(38,70,125,.4),rgba(5,10,24,.78));border:1px solid rgba(255,255,255,.07);
+  box-shadow:0 28px 38px -16px rgba(0,0,0,.8),0 6px 12px rgba(0,0,0,.4)}
+.kpi>*,.strip .s>*,.mini div>*{transform:translateZ(20px)}
+.kpi .v,.strip .s b,.mini div b{transform:translateZ(38px);text-shadow:0 8px 18px rgba(0,0,0,.45)}
+.kpi small,.strip .s small,.mini div small{transform:translateZ(14px)}
+.mini div b{display:block}
+.kpi{border-radius:18px}
+.kpi.best{--tint:rgba(52,211,153,.24);--edge:rgba(52,211,153,.36)}
+.kpi.med{--tint:rgba(96,165,250,.26);--edge:rgba(96,165,250,.38)}
+.kpi.worst{--tint:rgba(248,113,113,.24);--edge:rgba(248,113,113,.34)}
+
+/* ---------- header logo: a small rotating cube ---------- */
+.logo-mark{width:38px;height:38px;position:relative;perspective:170px;flex:none}
+.logo-mark::after{content:"";position:absolute;left:3px;right:3px;bottom:-6px;height:9px;border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.6),transparent);filter:blur(2px)}
+.lc{position:absolute;left:5px;top:5px;width:28px;height:28px;transform-style:preserve-3d;transform:rotateX(-24deg) rotateY(-34deg);animation:lcspin 16s linear infinite}
+@keyframes lcspin{to{transform:rotateX(-24deg) rotateY(326deg)}}
+.lc i{position:absolute;inset:0;display:grid;place-items:center;font-style:normal;font-weight:800;font-size:16px;line-height:1;color:#06111f;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.4),inset 0 -5px 8px rgba(0,50,90,.25)}
+.lc .a{transform:translateZ(14px);background:linear-gradient(145deg,#a6dcff,#2dd4bf)}
+.lc .b{transform:rotateY(180deg) translateZ(14px);background:linear-gradient(145deg,#38e0c8,#12907f)}
+.lc .c,.lc .d{color:transparent}
+.lc .c{transform:rotateY(90deg) translateZ(14px);
+  background:linear-gradient(#eaf6ff,#eaf6ff) 22% calc(100% - 5px)/16% 28% no-repeat,linear-gradient(#eaf6ff,#eaf6ff) 50% calc(100% - 5px)/16% 48% no-repeat,linear-gradient(#eaf6ff,#eaf6ff) 78% calc(100% - 5px)/16% 68% no-repeat,linear-gradient(145deg,#4fa6f4,#1d6fc2)}
+.lc .d{transform:rotateY(-90deg) translateZ(14px);
+  background:linear-gradient(#eaf6ff,#eaf6ff) 22% calc(100% - 5px)/16% 66% no-repeat,linear-gradient(#eaf6ff,#eaf6ff) 50% calc(100% - 5px)/16% 46% no-repeat,linear-gradient(#eaf6ff,#eaf6ff) 78% calc(100% - 5px)/16% 26% no-repeat,linear-gradient(145deg,#3a93e0,#175c9e)}
+.lc .e{transform:rotateX(90deg) translateZ(14px);background:linear-gradient(145deg,#d6eeff,#8fcbff)}
+.lc .f{transform:rotateX(-90deg) translateZ(14px);background:#0d4a72}
+
+/* DNA ring gloss */
+.ring{position:relative}
+.ring::after{content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;background:linear-gradient(155deg,rgba(255,255,255,.3),transparent 42%,rgba(0,0,0,.22))}
+
+/* ---------- floating 3D scene behind the glass ---------- */
+#scene{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+#scene .pl{position:absolute;will-change:transform}
+#scene .fl{animation:bob var(--dur,12s) ease-in-out var(--del,0s) infinite alternate}
+@keyframes bob{from{transform:translateY(-14px) rotate(-2deg)}to{transform:translateY(16px) rotate(2deg)}}
+.o3{perspective:900px}
+.sph{width:var(--s);height:var(--s);border-radius:50%;
+  background:radial-gradient(circle at 31% 25%,rgba(255,255,255,.95) 0,rgba(255,255,255,.4) 6%,transparent 20%),
+             radial-gradient(circle at 36% 30%,var(--c1) 0,var(--c2) 50%,var(--c3) 100%);
+  box-shadow:inset -18px -26px 46px rgba(0,18,46,.6),inset 10px 12px 26px rgba(255,255,255,.22),inset 0 0 0 1px rgba(255,255,255,.1),0 46px 70px -24px rgba(0,0,0,.65),0 0 90px var(--glow)}
+.gcube{position:relative;width:var(--s);height:var(--s);transform-style:preserve-3d;animation:tumble var(--spin,40s) linear infinite}
+@keyframes tumble{from{transform:rotateX(-20deg) rotateY(0)}to{transform:rotateX(340deg) rotateY(360deg)}}
+.gcube i{position:absolute;inset:0;border:1px solid rgba(190,232,255,.5);background:linear-gradient(135deg,rgba(140,205,255,.24),rgba(45,212,191,.08));box-shadow:inset 0 0 calc(var(--s) * .28) rgba(120,200,255,.32)}
+.gcube i:nth-child(1){transform:translateZ(calc(var(--s) / 2))}
+.gcube i:nth-child(2){transform:rotateY(180deg) translateZ(calc(var(--s) / 2))}
+.gcube i:nth-child(3){transform:rotateY(90deg) translateZ(calc(var(--s) / 2))}
+.gcube i:nth-child(4){transform:rotateY(-90deg) translateZ(calc(var(--s) / 2))}
+.gcube i:nth-child(5){transform:rotateX(90deg) translateZ(calc(var(--s) / 2))}
+.gcube i:nth-child(6){transform:rotateX(-90deg) translateZ(calc(var(--s) / 2))}
+.ring3d{position:relative;width:var(--s);height:var(--s);transform-style:preserve-3d;animation:ringspin 26s linear infinite}
+@keyframes ringspin{from{transform:rotateZ(24deg) rotateY(0)}to{transform:rotateZ(24deg) rotateY(360deg)}}
+.ring3d i{position:absolute;inset:0;border-radius:50%;transform:translateZ(var(--z));
+  background:linear-gradient(rgba(0,10,30,var(--dk)),rgba(0,10,30,var(--dk))),conic-gradient(from 30deg,#2dd4bf,#60a5fa,#34d399,#60a5fa,#2dd4bf);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 28px),#000 calc(100% - 27px));mask:radial-gradient(farthest-side,transparent calc(100% - 28px),#000 calc(100% - 27px))}
+@media(max-width:700px){#scene .pl .fl{zoom:.55}}
+
+/* ---------- 3D wealth skyline ---------- */
+.sky{position:relative;height:440px;border-radius:14px;overflow:hidden;cursor:grab;touch-action:pan-y;user-select:none;-webkit-user-select:none;
+  perspective:2300px;perspective-origin:50% 28%;border:1px solid var(--line);
+  background:radial-gradient(70% 90% at 50% 12%,rgba(96,165,250,.16),transparent 70%),rgba(0,0,0,.24);box-shadow:inset 0 2px 8px rgba(0,0,0,.45)}
+.sky.drag{cursor:grabbing}
+.sky:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sk-world{position:absolute;left:50%;top:70%;width:0;height:0;transform-style:preserve-3d;pointer-events:none}
+.sk-floor{position:absolute;transform:translateY(1px) rotateX(90deg);border-radius:16px;
+  background:linear-gradient(rgba(255,255,255,.075) 1px,transparent 1px) 0 0/40px 40px,linear-gradient(90deg,rgba(255,255,255,.075) 1px,transparent 1px) 0 0/40px 40px,
+             radial-gradient(closest-side,rgba(96,165,250,.2),rgba(45,212,191,.08));
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 0 70px rgba(45,212,191,.16)}
+.sk-wall{position:absolute;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:10px 10px 0 0;
+  background:linear-gradient(to top,rgba(96,165,250,.14),rgba(96,165,250,.02));box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+.sk-wall b{position:absolute;left:0;right:0;height:1px;background:rgba(255,255,255,.12)}
+.sk-wall b span{position:absolute;left:8px;top:-15px;font-size:10px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.sk-lab{position:absolute;width:44px;left:-22px;top:-8px;height:16px;text-align:center;font-size:10px;font-weight:700;color:var(--muted);line-height:16px;font-variant-numeric:tabular-nums}
+.sk-sg{position:absolute;left:0;top:0;width:0;height:0;transform-style:preserve-3d;transition:transform .8s cubic-bezier(.2,.85,.25,1)}
+.sk-sg i{position:absolute;pointer-events:auto;backface-visibility:hidden;-webkit-backface-visibility:hidden;opacity:.94;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.2);
+  background:linear-gradient(rgba(255,255,255,var(--lt,0)),rgba(255,255,255,var(--lt,0))),linear-gradient(rgba(0,10,30,var(--sh,0)),rgba(0,10,30,var(--sh,0))),linear-gradient(180deg,var(--c1),var(--c2))}
+.sk-sg.inv{--c1:#6bb8ff;--c2:#2f72d8}
+.sk-sg.gain{--c1:#7af2c4;--c2:#1fae7d}
+.sk-sg.hot i{--lt:.3}
+.sk-sg.last i{--lt:.14}
+.sk-sg .fr,.sk-sg .bk{left:calc(var(--bw) / -2);top:-100px;width:var(--bw);height:100px}
+.sk-sg .fr{transform:translateZ(calc(var(--bd) / 2))}
+.sk-sg .bk{--sh:.5;transform:translateZ(calc(var(--bd) / -2)) rotateY(180deg)}
+.sk-sg .lf,.sk-sg .rt{left:calc(var(--bd) / -2);top:-100px;width:var(--bd);height:100px}
+.sk-sg .rt{--sh:.24;transform:translateX(calc(var(--bw) / 2)) rotateY(90deg)}
+.sk-sg .lf{--sh:.4;transform:translateX(calc(var(--bw) / -2)) rotateY(-90deg)}
+.sk-sg .tp{left:calc(var(--bw) / -2);top:calc(var(--bd) / -2);width:var(--bw);height:var(--bd);transform:translateY(-100px) rotateX(90deg);
+  background:linear-gradient(rgba(255,255,255,calc(.28 + var(--lt,0))),rgba(255,255,255,calc(.28 + var(--lt,0)))),var(--c1)}
+.sk-read{position:absolute;left:14px;top:14px;min-width:216px;padding:11px 14px;border-radius:13px;pointer-events:none;font-size:12px;
+  background:rgba(10,16,32,.58);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line);box-shadow:var(--hl),var(--deep)}
+.sk-read .h{display:flex;justify-content:space-between;gap:14px;margin-bottom:6px;font-size:13px}
+.sk-read .h span{color:var(--muted);font-weight:600}
+.sk-read div.r{display:flex;align-items:center;gap:7px;padding:2px 0;color:var(--muted)}
+.sk-read div.r i{width:9px;height:9px;border-radius:3px}
+.sk-read div.r b{margin-left:auto;color:var(--text);font-variant-numeric:tabular-nums}
+.sk-read div.t{margin-top:5px;padding-top:6px;border-top:1px solid var(--rule);display:flex;justify-content:space-between;font-weight:800;font-size:13px}
+.sk-reset{position:absolute;right:14px;top:14px}
+.sk-hint{position:absolute;right:14px;bottom:12px;font-size:11px;color:var(--muted);pointer-events:none}
+.sk-empty{position:absolute;inset:0;display:none;place-items:center;text-align:center;padding:20px;color:var(--muted);pointer-events:none}
+.sky.none .sk-empty{display:grid}
+.sky.none .sk-world,.sky.none .sk-read,.sky.none .sk-reset{display:none}
+@media(max-width:700px){.sky{height:380px}.sk-read{min-width:0;padding:9px 11px}.sk-hint{display:none}}
+
+@media(prefers-reduced-motion:reduce){
+  #scene .fl,.gcube,.ring3d,.lc{animation:none}
+  .kpi,.strip .s,.mini div,.sk-sg{transition:none}
+}
+
+.sk-key{position:absolute;left:14px;bottom:12px;display:flex;gap:14px;font-size:11px;color:var(--muted);pointer-events:none}
+.sk-key i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px}
+.sk-key .k1{background:#4f9cf0}.sk-key .k2{background:#34d399}
+
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(90px);background:rgba(40,14,20,.85);backdrop-filter:blur(14px);border:1px solid rgba(248,113,113,.6);color:#fecaca;padding:12px 18px;border-radius:13px;transition:.3s;z-index:99;max-width:90vw;font-size:14px;box-shadow:var(--deep)}
+#toast.show{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body data-tab="sim">
+<div id="scene" aria-hidden="true">
+  <div class="pl" data-d="52" style="left:-6%;top:54%"><div class="fl" style="--dur:14s"><div class="sph" style="--s:340px;--c1:#9af3e4;--c2:#1fa79d;--c3:#0a3550;--glow:rgba(45,212,191,.38)"></div></div></div>
+  <div class="pl" data-d="34" style="right:-4%;top:4%"><div class="fl" style="--dur:11s;--del:-4s"><div class="sph" style="--s:230px;--c1:#a9d3ff;--c2:#3b86e8;--c3:#0f2a66;--glow:rgba(96,165,250,.4)"></div></div></div>
+  <div class="pl" data-d="70" style="left:44%;top:78%"><div class="fl" style="--dur:9s;--del:-2s"><div class="sph" style="--s:96px;--c1:#b4f7d8;--c2:#27b985;--c3:#0b4a3c;--glow:rgba(52,211,153,.4)"></div></div></div>
+  <div class="pl" data-d="88" style="left:27%;top:9%"><div class="fl" style="--dur:10s;--del:-6s"><div class="sph" style="--s:58px;--c1:#c4e0ff;--c2:#4f94ee;--c3:#16337a;--glow:rgba(96,165,250,.45)"></div></div></div>
+  <div class="pl" data-d="60" style="right:9%;top:50%"><div class="fl" style="--dur:15s;--del:-3s"><div class="o3"><div class="ring3d" style="--s:300px"></div></div></div></div>
+  <div class="pl" data-d="44" style="left:57%;top:12%"><div class="fl" style="--dur:12s;--del:-7s"><div class="o3"><div class="gcube" style="--s:150px"><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div></div>
+  <div class="pl" data-d="96" style="left:10%;top:30%"><div class="fl" style="--dur:8s;--del:-1s"><div class="o3"><div class="gcube" style="--s:64px;--spin:26s"><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div></div>
+</div>
+<header>
+  <div class="logo"><div class="logo-mark" aria-hidden="true"><div class="lc"><i class="a">F</i><i class="b">₹</i><i class="c"></i><i class="d"></i><i class="e"></i><i class="f"></i></div></div>
+    <div><h1>FinVerse</h1><p>See your financial future before it happens</p></div></div>
+  <nav class="tabs">
+    <button data-tab="sim" class="on" onclick="show('sim')">Simulator</button>
+    <button data-tab="plan" onclick="show('plan')">Investment plan</button>
+    <button data-tab="swp" onclick="show('swp')">Retirement (SWP)</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ============ LEFT: the twin (shared by every tab) ============ -->
+  <aside class="stack">
+    <div class="card">
+      <h2><span>Your financial twin</span>
+        <span class="acts"><button class="ghost small" onclick="fillDemo()">Load demo</button><button class="ghost small" id="saveBtn" onclick="onSave()">Save</button></span></h2>
+      <div class="field"><label>Your name</label><input id="name" value="Diya" maxlength="40" placeholder="e.g. Diya"></div>
+
+      <div class="grp">Monthly cash flow</div>
+      <div class="field"><label>Monthly income</label><div class="inp" data-pre="₹"><input id="income" type="number" min="0" value="120000"></div></div>
+      <div class="g2">
+        <div><label>Monthly expenses</label><div class="inp" data-pre="₹"><input id="expenses" type="number" min="0" value="60000"></div></div>
+        <div><label>Monthly SIP</label><div class="inp" data-pre="₹"><input id="sip" type="number" min="0" value="25000"></div></div>
+      </div>
+      <div class="hint">Expenses + SIP + loan EMIs must not exceed your income. The budget box on the right tracks this live.</div>
+
+      <div class="grp">What you have today</div>
+      <div class="g2">
+        <div><label>Savings in bank</label><div class="inp" data-pre="₹"><input id="savings" type="number" min="0" value="400000"></div></div>
+        <div><label>SIP corpus so far</label><div class="inp" data-pre="₹"><input id="corpus" type="number" min="0" value="800000"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span>Market and growth assumptions</span></h2>
+      <div class="g2">
+        <div><label>Expected return</label><div class="inp" data-suf="%/yr"><input id="ret" type="number" step="0.5" value="10"></div></div>
+        <div><label>Volatility (swings)</label><div class="inp" data-suf="%/yr"><input id="vol" type="number" step="0.5" value="15"></div></div>
+        <div><label>Income growth</label><div class="inp" data-suf="%/yr"><input id="ig" type="number" step="0.5" value="6"></div></div>
+        <div><label>Expense inflation</label><div class="inp" data-suf="%/yr"><input id="eg" type="number" step="0.5" value="5"></div></div>
+      </div>
+    </div>
+
+    <div class="card" data-v="sim">
+      <h2><span>Loans</span><span class="acts"><button class="ghost small" onclick="addLoan()">+ Add loan</button></span></h2>
+      <div id="loans"></div>
+    </div>
+
+    <div class="card" data-v="sim">
+      <h2><span>Goals</span><span class="acts"><button class="ghost small" onclick="addGoal()">+ Add goal</button></span></h2>
+      <div id="goals"></div>
+    </div>
+
+    <div class="card" data-v="sim">
+      <h2><span>Run the simulation</span></h2>
+      <div class="field"><label>Scenario (crash test)</label>
+        <select id="scenario">
+          <option value="baseline">Baseline: no shocks</option>
+          <option value="market_crash">Market crash (-35%)</option>
+          <option value="job_loss">Job loss (8 months)</option>
+          <option value="inflation">Inflation spike (+25% expenses)</option>
+          <option value="perfect_storm">Perfect storm (all three)</option>
+        </select>
+        <div class="hint">A stress scenario is automatically compared against the baseline.</div></div>
+      <div class="g2 field">
+        <div><label>Years to project</label><select id="years"><option>5</option><option selected>10</option><option>15</option><option>20</option><option>30</option></select>
+          <div class="hint">How far into the future to look.</div></div>
+        <div><label>Number of simulations</label><select id="paths"><option>500</option><option selected>1000</option><option>2000</option><option>5000</option></select>
+          <div class="hint">Random market paths tested. More gives smoother results.</div></div>
+      </div>
+      <button class="primary" id="runBtn" onclick="runSim()">Run simulation</button>
+    </div>
+  </aside>
+
+  <!-- ============ RIGHT ============ -->
+  <section class="stack">
+    <div class="strip">
+      <div class="s"><small>Net worth today</small><b id="heroNW">₹0</b></div>
+      <div class="s"><small>Free cash a month</small><b id="heroFree">₹0</b></div>
+    </div>
+
+    <!-- ---------- tab 1: simulator ---------- -->
+    <div data-v="sim" class="stack">
+      <div class="duo">
+        <div class="card"><h2><span>Financial DNA</span></h2>
+          <div class="placeholder" id="dnaEmpty">Save your twin to reveal your financial DNA.</div><div id="dnaBody" style="display:none"></div></div>
+        <div class="card"><h2><span>Monthly budget</span></h2>
+          <div class="bud-top"><div><div class="big" id="budUsed">₹0</div><small>of <span id="budInc">₹0</span> income allocated</small></div><div class="pill ok" id="budStatus">Within budget</div></div>
+          <div class="stackbar" id="budBar"></div><div class="legend" id="budLegend"></div></div>
+      </div>
+
+      <div class="card" id="jobsCard" style="display:none"><h2><span>Async pipeline</span><span class="note">request → SQS queue → Lambda worker → DynamoDB</span></h2><div id="jobs"></div></div>
+
+      <div id="results" class="stack" style="display:none">
+        <div class="kpis" id="kpis"></div>
+        <div class="charts">
+          <div class="card"><h2><span>Projected net worth</span><span class="note" id="chartNote"></span></h2><div class="chartbox"><canvas id="fan"></canvas></div></div>
+          <div class="card"><h2><span>Where you could end up</span></h2><div class="chartbox"><canvas id="hist"></canvas></div></div>
+        </div>
+        <div class="card"><h2><span>Goal probability</span></h2><div id="goalList"></div></div>
+      </div>
+
+      <div class="card"><h2><span>Run history</span><span class="acts"><button class="ghost small" onclick="loadHistory()">Refresh</button></span></h2><div id="history" class="tablewrap"><div class="empty">No runs yet.</div></div></div>
+    </div>
+
+    <!-- ---------- tab 2: investment plan ---------- -->
+    <div data-v="plan" class="stack">
+      <div class="card">
+        <h2><span>Plan inputs</span><span class="note">SIP, existing corpus and return come from your twin on the left</span></h2>
+        <div class="g4">
+          <div><label>Your age today</label><div class="inp" data-suf="yrs"><input id="curAge" type="number" min="18" max="80" value="25"></div></div>
+          <div><label>Retirement age</label><div class="inp" data-suf="yrs"><input id="retAge" type="number" min="19" max="90" value="60"></div></div>
+          <div><label>Yearly SIP step-up</label><div class="inp" data-suf="%/yr"><input id="stepUp" type="number" min="0" max="50" step="0.5" value="0"></div></div>
+          <div><label>Growth basis</label>
+            <select id="basis"><option value="median">Realistic (median)</option><option value="mean">Expected (average)</option></select></div>
+        </div>
+        <div class="hint">Realistic trims the return slightly for market ups and downs, so it lines up with the median in the simulator. Expected assumes the average return every single year. A step-up raises your SIP by that percentage each year.</div>
+      </div>
+
+      <div class="kpis k3">
+        <div class="kpi"><small>Total money invested</small><div class="v" id="pInvested">–</div><div class="d m" id="pInvestedSub"></div></div>
+        <div class="kpi med"><small>Portfolio value at retirement</small><div class="v" id="pCorpus">–</div><div class="d m" id="pCorpusSub"></div></div>
+        <div class="kpi best"><small>Total gain</small><div class="v" id="pGain">–</div><div class="d m" id="pGainSub"></div></div>
+      </div>
+
+      <div class="card"><h2><span>Wealth skyline</span><span class="note">One bar per year, from today to retirement</span></h2>
+        <div class="sky none" id="sky" tabindex="0" role="img" aria-label="Interactive 3D bar chart of your portfolio value for each year until retirement. Drag or use the arrow keys to rotate it. The table below has the same numbers.">
+          <div class="sk-world" id="skyWorld"></div>
+          <div class="sk-read" id="skyRead"></div>
+          <button class="ghost small sk-reset" id="skyReset" type="button">Reset view</button>
+          <div class="sk-key"><span><i class="k1"></i>Invested</span><span><i class="k2"></i>Gain</span></div>
+          <div class="sk-hint">Drag to rotate · tap a bar for details</div>
+          <div class="sk-empty" id="skyEmpty">Enter your ages to see the skyline.</div>
+        </div></div>
+
+      <div class="card"><h2><span>Year-by-year</span><span class="note">Invested this year, total invested so far, and portfolio value</span></h2>
+        <div id="planBody"><div class="empty">Enter your ages to see the plan.</div></div></div>
+    </div>
+
+    <!-- ---------- tab 3: SWP ---------- -->
+    <div data-v="swp" class="stack">
+      <div class="card">
+        <h2><span>Withdrawal plan</span></h2>
+        <div class="ctx" id="swpCtx"></div>
+        <div class="g5">
+          <div><label>Corpus at retirement</label><div class="inp" data-pre="₹"><input id="swpCorpus" type="number" min="0" value="0"></div></div>
+          <div><label>Monthly withdrawal</label><div class="inp" data-pre="₹"><input id="swpWd" type="number" min="0" value="300000"></div></div>
+          <div><label>Return after retirement</label><div class="inp" data-suf="%/yr"><input id="swpRet" type="number" step="0.5" value="8"></div></div>
+          <div><label>Withdrawal inflation</label><div class="inp" data-suf="%/yr"><input id="swpInf" type="number" step="0.5" min="0" value="5"></div></div>
+          <div><label>Plan to last until</label><div class="inp" data-suf="yrs"><input id="swpUntil" type="number" min="50" max="100" value="85"></div></div>
+        </div>
+        <div class="hint">The corpus fills in from your Investment plan. You can type over it, or <a style="color:var(--accent);cursor:pointer;text-decoration:underline" onclick="resyncCorpus()">reset it to the plan value</a>. Withdrawals are taken at the start of each month and rise by the inflation rate every year.</div>
+      </div>
+
+      <div class="card">
+        <div class="res-top">
+          <div><div class="res-big" id="swpBig">–</div><div class="res-sub" id="swpSub"></div></div>
+          <div class="pill ok" id="swpPill" style="display:none"></div>
+        </div>
+        <div class="mini" id="swpMini"></div>
+        <div class="chartbox sm"><canvas id="swpChart"></canvas></div>
+      </div>
+    </div>
+  </section>
+</main>
+<div id="toast"></div>
+
+<script>
+const API = (window.FINVERSE_API || "").replace(/\/$/, "");
+const $ = s => document.querySelector(s);
+if (window.Chart){ Chart.defaults.font.family = 'Manrope,system-ui,sans-serif'; Chart.defaults.color = "#9aa4bf"; }
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const SCEN = {baseline:"Baseline",market_crash:"Market crash",job_loss:"Job loss",inflation:"Inflation spike",perfect_storm:"Perfect storm"};
+let charts = {}, busy = false, budgetOK = true;
+
+function inr(n){
+  const a = Math.abs(n), s = n < 0 ? "-" : "";
+  if (a >= 1e7) return s + "₹" + (a/1e7).toFixed(2) + " Cr";
+  if (a >= 1e5) return s + "₹" + (a/1e5).toFixed(2) + " L";
+  return s + "₹" + Math.round(a).toLocaleString("en-IN");
+}
+const fullInr = n => (n < 0 ? "-" : "") + "₹" + Math.round(Math.abs(n)).toLocaleString("en-IN");
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toast.h); toast.h=setTimeout(()=>t.classList.remove("show"),5000); }
+const slug = n => (n.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,40)) || "user";
+
+async function api(path, body){
+  const opts = body ? {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)} : {};
+  const r = await fetch(API + path, opts);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ("Request failed (" + r.status + ")"));
+  return j;
+}
+
+/* ---------------- tabs ---------------- */
+const TABS = ["sim","plan","swp"];
+function show(tab){
+  if (!TABS.includes(tab)) tab = "sim";
+  document.body.dataset.tab = tab;
+  if (tab === "plan") Sky.flush();   // the 3D chart can only size itself once its tab is visible
+  document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
+  try{ history.replaceState(null, "", "#" + tab); }catch(e){}
+  if (tab === "swp") calcSwp();   // chart needs a visible canvas to size itself
+  window.scrollTo({top:0});
+}
+
+/* ---------------- EMI + live budget ---------------- */
+function emi(P, ratePct, years){
+  const n = Math.round(years*12);
+  if (P <= 0 || n <= 0) return 0;
+  const r = ratePct/1200;
+  if (!r) return Math.round(P/n);
+  const f = Math.pow(1+r, n);
+  return Math.round(P*r*f/(f-1));
+}
+function updateBudget(){
+  const v = id => +$(id).value || 0;
+  const inc=v("#income"), exp=v("#expenses"), sip=v("#sip");
+  let emis=0, loanTotal=0;
+  document.querySelectorAll("#loans .row-item").forEach(r=>{
+    const a=+r.querySelector(".a").value||0;
+    const e=emi(a, +r.querySelector(".i").value||0, +r.querySelector(".t").value||0);
+    r.querySelector(".emi b").textContent = "₹" + e.toLocaleString("en-IN");
+    emis+=e; loanTotal+=a;
+  });
+  const total=exp+sip+emis, over = total > inc + 0.5 || inc <= 0;
+  const free=Math.max(0, inc-total), scale=Math.max(inc,total)||1;
+  budgetOK = !over;
+  const seg=[["Expenses",exp,"#fb923c"],["Loan EMIs",emis,"#f87171"],["SIP",sip,"#60a5fa"],["Free cash",free,"#34d399"]];
+  $("#budBar").innerHTML = seg.map(([n,x,c])=>`<div title="${n}" style="width:${x/scale*100}%;background:${c}"></div>`).join("");
+  $("#budLegend").innerHTML = seg.map(([n,x,c])=>`<div><i style="background:${c}"></i><span>${n}</span><b>${inr(x)}</b></div>`).join("");
+  $("#budUsed").textContent = inr(total);
+  $("#budInc").textContent = inr(inc);
+  const st=$("#budStatus");
+  st.textContent = inc<=0 ? "Enter your income" : over ? "Over budget by "+inr(total-inc) : "Within budget";
+  st.className = "pill " + (over ? "bad" : "ok");
+  $("#heroFree").textContent = inr(free);
+  $("#heroNW").textContent = inr(v("#savings") + v("#corpus") - loanTotal);
+  $("#runBtn").disabled = busy || over;
+  $("#saveBtn").disabled = over;
+  calcPlan();   // plan + SWP follow the twin's SIP, corpus, return and volatility
+}
+
+/* ---------------- investment plan ---------------- */
+const PLAN_IDS = ["curAge","retAge","stepUp","basis","swpWd","swpRet","swpInf","swpUntil"];
+let PLAN = null, swpAuto = true, swpChart = null;
+
+function planDash(msg){
+  PLAN = null;
+  ["pInvested","pCorpus","pGain"].forEach(i => $("#"+i).textContent = "–");
+  ["pInvestedSub","pCorpusSub","pGainSub"].forEach(i => $("#"+i).textContent = "");
+  $("#planBody").innerHTML = `<div class="empty">${msg}</div>`;
+  Sky.clear(msg);
+  calcSwp();
+}
+function calcPlan(){
+  const age = Math.floor(+$("#curAge").value || 0), ret = Math.floor(+$("#retAge").value || 0);
+  if (age < 18 || age > 80) return planDash("Enter your current age (between 18 and 80).");
+  if (ret <= age) return planDash("Retirement age must be higher than your current age.");
+  if (ret > 90 || ret - age > 60) return planDash("Keep the plan within 60 years and retirement age at 90 or below.");
+
+  const mean = (+$("#ret").value || 0)/100, vol = (+$("#vol").value || 0)/100;
+  const step = (+$("#stepUp").value || 0)/100;
+  const median = $("#basis").value === "median";
+  // monthly growth. "median" subtracts the volatility drag (sigma^2/2), same as the simulator's median path
+  const g = median ? mean/12 - (vol*vol/12)/2 : mean/12;
+
+  let sip = +$("#sip").value || 0;
+  let val = +$("#corpus").value || 0;
+  const opening = val;
+  let invested = opening, sipTotal = 0;
+  const y0 = new Date().getFullYear();
+  const rows = [{label:"Now", age, put:0, invested, val, gain:0, cls:"now"}];
+  for (let y = 1; y <= ret - age; y++){
+    let put = 0;
+    for (let m = 0; m < 12; m++){ val *= 1 + g; val += sip; put += sip; }   // grow, then add the SIP (as the simulator does)
+    invested += put; sipTotal += put;
+    rows.push({label:y0 + y, age:age + y, put, invested, val, gain:val - invested, cls:y === ret - age ? "last" : ""});
+    sip *= 1 + step;
+  }
+  PLAN = {age, ret, corpus:val, invested, gain:val - invested};
+
+  $("#pInvested").textContent = inr(invested);
+  $("#pInvestedSub").textContent = `${inr(opening)} already invested + ${inr(sipTotal)} in new SIPs`;
+  $("#pCorpus").textContent = inr(val);
+  $("#pCorpusSub").textContent = `at age ${ret}, ${ret-age} years from now`;
+  $("#pGain").textContent = inr(val - invested);
+  $("#pGainSub").textContent = invested > 0 ? `${(val/invested).toFixed(1)}x the money you put in` : "";
+
+  $("#planBody").innerHTML = `<div class="tbl-scroll"><table>
+    <tr><th>Year</th><th>Age</th><th class="n">Invested this year</th><th class="n">Total invested</th><th class="n">Portfolio value</th><th class="n">Gain</th></tr>` +
+    rows.map(r => `<tr class="${r.cls}"><td>${r.label}</td><td>${r.age}</td>
+      <td class="n" title="${fullInr(r.put)}">${r.cls==="now" ? "–" : inr(r.put)}</td>
+      <td class="n" title="${fullInr(r.invested)}">${inr(r.invested)}</td>
+      <td class="n" title="${fullInr(r.val)}">${inr(r.val)}</td>
+      <td class="n" style="color:${r.gain<0?"var(--bad)":r.cls==="now"?"var(--muted)":"var(--good)"}">${r.cls==="now" ? "–" : inr(r.gain)}</td></tr>`).join("") +
+    `</table></div>`;
+  Sky.set(rows);
+  calcSwp();
+}
+
+/* ---------------- SWP calculator ---------------- */
+function resyncCorpus(){ swpAuto = true; calcSwp(); }
+function calcSwp(){
+  if (PLAN && swpAuto) $("#swpCorpus").value = Math.round(PLAN.corpus);
+  const retAge = PLAN ? PLAN.ret : (Math.floor(+$("#retAge").value) || 60);
+  $("#swpCtx").innerHTML = PLAN
+    ? `Retiring at <b>${PLAN.ret}</b>, which is ${PLAN.ret-PLAN.age} years from now. <a onclick="show('plan')">Change in Investment plan</a>`
+    : `Set your ages in the <a onclick="show('plan')">Investment plan</a> first.`;
+
+  const corpus = +$("#swpCorpus").value || 0, w0 = +$("#swpWd").value || 0;
+  const r = (+$("#swpRet").value || 0)/100, infl = (+$("#swpInf").value || 0)/100;
+  const until = Math.floor(+$("#swpUntil").value) || 85;
+  const big = $("#swpBig"), sub = $("#swpSub"), pill = $("#swpPill"), mini = $("#swpMini");
+  const reset = (a, b) => { big.textContent = a; sub.textContent = b; pill.style.display = "none"; mini.innerHTML = ""; drawSwp(null); };
+  if (corpus <= 0) return reset("–", "Enter a retirement corpus, or fill in the Investment plan.");
+  if (w0 <= 0) return reset("–", "Enter a monthly withdrawal.");
+
+  const capYears = Math.max(1, 100 - retAge), maxM = capYears * 12;
+  let bal = corpus, w = w0, months = 0, total = 0, lastW = w0;
+  const bals = [corpus];
+  while (months < maxM){
+    if (months > 0 && months % 12 === 0) w *= 1 + infl;
+    if (bal < w) break;
+    bal -= w; total += w; lastW = w;
+    bal *= 1 + r/12;
+    months++;
+    if (months % 12 === 0) bals.push(bal);
+  }
+  const survived = months >= maxM;
+  if (!survived) bals.push(0);
+
+  const yrs = Math.floor(months/12), mo = months % 12;
+  const endAge = retAge + months/12;
+  if (survived){
+    big.textContent = `Lasts beyond age ${retAge + capYears}`;
+    sub.textContent = `Your corpus still has ${inr(bal)} left after ${capYears} years of withdrawals.`;
+  } else {
+    big.textContent = (yrs ? `${yrs} year${yrs===1?"":"s"}` : "") + (yrs && mo ? " " : "") + (mo || !yrs ? `${mo} month${mo===1?"":"s"}` : "");
+    sub.textContent = `Withdrawals run from age ${retAge} until about age ${endAge.toFixed(1).replace(/\.0$/,"")}.`;
+  }
+  const covered = survived || endAge >= until;
+  pill.style.display = "";
+  pill.className = "pill " + (covered ? "ok" : "bad");
+  pill.textContent = covered ? `Covers you till ${until}` : `Falls ${(until-endAge).toFixed(1).replace(/\.0$/,"")} yrs short of ${until}`;
+
+  const idx = until - retAge;
+  const leftAtPlan = idx <= 0 ? corpus : (idx < bals.length ? bals[idx] : (survived ? bal : 0));
+  mini.innerHTML = `<div><small>Total withdrawn</small><b>${inr(total)}</b></div>
+    <div><small>Monthly withdrawal at the end</small><b>${inr(lastW)}</b></div>
+    <div><small>Corpus left at age ${until}</small><b>${leftAtPlan > 0 ? inr(leftAtPlan) : "Depleted"}</b></div>`;
+  drawSwp({retAge, bals});
+}
+function drawSwp(d){
+  if (swpChart){ swpChart.destroy(); swpChart = null; }
+  if (!d || document.body.dataset.tab !== "swp") return;
+  const tick = "#9aa4bf", grid = "rgba(255,255,255,.07)";
+  swpChart = new Chart($("#swpChart"), {type:"line", data:{
+    labels: d.bals.map((_, i) => d.retAge + i),
+    datasets:[{label:"Corpus balance", data:d.bals.map(Math.round), borderColor:"#2dd4bf", backgroundColor:"rgba(45,212,191,.12)", fill:true, borderWidth:3, pointRadius:0, tension:.2}]},
+    options:{responsive:true, maintainAspectRatio:false, interaction:{mode:"index", intersect:false},
+      plugins:{legend:{display:false}, tooltip:{callbacks:{title:i => "Age " + i[0].label, label:c => "Balance: " + inr(c.parsed.y)}}},
+      scales:{x:{title:{display:true, text:"Age", color:tick}, ticks:{color:tick, maxTicksLimit:12}, grid:{display:false}},
+              y:{ticks:{color:tick, callback:v => inr(v)}, grid:{color:grid}, beginAtZero:true}}}});
+}
+
+// remember the plan / SWP inputs between visits
+function savePlanInputs(){ try{ localStorage.setItem("finverse_plan", JSON.stringify(Object.fromEntries(PLAN_IDS.map(i => [i, $("#"+i).value])))); }catch(e){} }
+function restorePlanInputs(){
+  try{ const s = JSON.parse(localStorage.getItem("finverse_plan") || "{}"); PLAN_IDS.forEach(i => { if (s[i] != null) $("#"+i).value = s[i]; }); }catch(e){}
+}
+
+document.addEventListener("input", e => {
+  if (e.target.id === "swpCorpus") swpAuto = false;
+  updateBudget();           // also recalculates the plan and SWP
+  if (PLAN_IDS.includes(e.target.id)) savePlanInputs();
+});
+
+/* ---------------- dynamic rows ---------------- */
+function addLoan(l = {}){
+  const d = document.createElement("div"); d.className = "row-item";
+  d.innerHTML = `<button class="rm" title="Remove" onclick="this.parentNode.remove();updateBudget()">×</button>
+    <input class="n" placeholder="Loan name (e.g. Car loan)" value="${esc(l.name||"")}">
+    <div class="g3">
+      <div><label>Loan amount</label><div class="inp" data-pre="₹"><input class="a" type="number" min="0" value="${l.amount??""}"></div></div>
+      <div><label>Interest rate</label><div class="inp" data-suf="%"><input class="i" type="number" step="0.1" min="0" value="${l.interest_rate??""}"></div></div>
+      <div><label>Tenure</label><div class="inp" data-suf="yrs"><input class="t" type="number" step="0.5" min="0.5" value="${l.tenure_years??""}"></div></div>
+    </div>
+    <div class="emi">EMI <b>₹0</b> a month, calculated automatically</div>`;
+  $("#loans").appendChild(d); updateBudget();
+}
+function addGoal(g = {}){
+  const d = document.createElement("div"); d.className = "row-item";
+  d.innerHTML = `<button class="rm" title="Remove" onclick="this.parentNode.remove()">×</button>
+    <input class="n" placeholder="Goal name (e.g. Buy a house)" value="${esc(g.name||"")}">
+    <div class="g2">
+      <div><label>Target amount</label><div class="inp" data-pre="₹"><input class="a" type="number" min="0" value="${g.target_amount??""}"></div></div>
+      <div><label>Achieve by year</label><input class="y" type="number" value="${g.target_year??(new Date().getFullYear()+8)}"></div>
+    </div>`;
+  $("#goals").appendChild(d);
+}
+function fillDemo(){
+  const y = new Date().getFullYear();
+  $("#income").value=120000; $("#expenses").value=60000; $("#sip").value=25000;
+  $("#savings").value=400000; $("#corpus").value=800000;
+  $("#ret").value=10; $("#vol").value=15; $("#ig").value=6; $("#eg").value=5;
+  $("#loans").innerHTML=""; $("#goals").innerHTML="";
+  addLoan({name:"Car loan",amount:450000,interest_rate:9.5,tenure_years:3});
+  addGoal({name:"Buy a house",target_amount:15000000,target_year:y+9});
+  addGoal({name:"Retirement corpus",target_amount:50000000,target_year:y+20});
+  updateBudget();
+}
+
+function readTwin(){
+  const rows = id => [...document.querySelectorAll("#"+id+" .row-item")];
+  const name = $("#name").value.trim() || "Friend";
+  return {
+    user_id: slug(name), name,
+    monthly_income: +$("#income").value||0, monthly_expenses: +$("#expenses").value||0, monthly_sip: +$("#sip").value||0,
+    current_savings: +$("#savings").value||0, current_investments: +$("#corpus").value||0,
+    investment_return_mean: +$("#ret").value/100, investment_return_std: +$("#vol").value/100,
+    income_growth: +$("#ig").value/100, expense_growth: +$("#eg").value/100,
+    loans: rows("loans").filter(r => +r.querySelector(".a").value > 0).map(r => ({name:r.querySelector(".n").value||"Loan",
+      amount:+r.querySelector(".a").value, interest_rate:+r.querySelector(".i").value||0, tenure_years:+r.querySelector(".t").value||1})),
+    goals: rows("goals").filter(r => +r.querySelector(".a").value > 0).map(r => ({name:r.querySelector(".n").value||"Goal",
+      target_amount:+r.querySelector(".a").value, target_year:+r.querySelector(".y").value}))
+  };
+}
+function fillTwin(t){
+  $("#name").value=t.name||t.user_id; $("#income").value=t.monthly_income; $("#expenses").value=t.monthly_expenses;
+  $("#sip").value=t.monthly_sip||0; $("#savings").value=t.current_savings; $("#corpus").value=t.current_investments;
+  $("#ret").value=+(t.investment_return_mean*100).toFixed(2); $("#vol").value=+(t.investment_return_std*100).toFixed(2);
+  $("#ig").value=+(t.income_growth*100).toFixed(2); $("#eg").value=+(t.expense_growth*100).toFixed(2);
+  $("#loans").innerHTML=""; $("#goals").innerHTML="";
+  t.loans.forEach(addLoan); t.goals.forEach(addGoal);
+  updateBudget();
+}
+
+/* ---------------- twin + DNA ---------------- */
+async function saveTwin(){
+  const res = await api("/twin", readTwin());
+  try { localStorage.setItem("finverse_uid", res.twin.user_id); } catch(e){}
+  renderDNA(res.dna);
+  return res.twin;
+}
+async function onSave(){
+  try{ await saveTwin(); loadHistory(); }catch(e){ toast(e.message); }
+}
+function renderDNA(d){
+  $("#dnaEmpty").style.display="none"; const b=$("#dnaBody"); b.style.display="block";
+  b.innerHTML = `<div class="dna up"><div class="ring" style="--p:${d.score}"><b>${d.score}</b></div>
+    <div><h3>${esc(d.archetype)}</h3><p>${esc(d.tagline)}</p>
+    <div class="chips"><span class="chip">Saves ${d.savings_rate}% of income</span><span class="chip">EMIs ${d.debt_ratio}% of income</span>
+    <span class="chip">${d.runway_months} months of cash</span><span class="chip">SIP ${d.sip_rate}% of income</span></div></div></div>`;
+}
+
+/* ---------------- async job tracker ---------------- */
+function addJobRow(scen){
+  $("#jobsCard").style.display="block";
+  const d=document.createElement("div"); d.className="job";
+  d.innerHTML=`<div class="name">${SCEN[scen]}</div><div class="steps">
+    <div class="step" data-s="QUEUED"><span class="dot"></span>Queued</div><div class="bar"></div>
+    <div class="step" data-s="RUNNING"><span class="dot"></span>Running</div><div class="bar"></div>
+    <div class="step" data-s="DONE"><span class="dot"></span>Done</div></div><div class="t" style="color:var(--muted);font-size:12px"></div>`;
+  $("#jobs").appendChild(d); return d;
+}
+function setRow(row, status, ms){
+  const order=["QUEUED","RUNNING","DONE"]; const idx=order.indexOf(status);
+  row.querySelectorAll(".step").forEach((s,i)=>{ s.className="step"+(i<idx||status==="DONE"?" done":i===idx?" on":""); });
+  if (status==="FAILED") row.querySelector(".t").innerHTML='<span class="fail">failed</span>';
+  if (ms) row.querySelector(".t").textContent = ms + " ms compute";
+}
+async function pollJob(id, row){
+  const t0=Date.now();
+  while (Date.now()-t0 < 120000){
+    const j = await api("/result/" + id);
+    setRow(row, j.status, j.result && j.result.compute_ms);
+    if (j.status==="DONE") return j.result;
+    if (j.status==="FAILED") throw new Error(j.error || "Simulation failed");
+    await sleep(800);
+  }
+  throw new Error("Timed out waiting for the worker");
+}
+
+async function runSim(){
+  if (!budgetOK) return toast("Expenses + SIP + EMIs must not exceed your monthly income.");
+  busy=true; const btn=$("#runBtn"); btn.textContent="Running..."; updateBudget();
+  try{
+    const twin = await saveTwin();
+    const scen = $("#scenario").value;
+    const list = scen==="baseline" ? ["baseline"] : ["baseline", scen];
+    $("#jobs").innerHTML="";
+    const out = await Promise.all(list.map(async s=>{
+      const row = addJobRow(s);
+      const {job_id} = await api("/simulate", {user_id:twin.user_id, scenario:s, years:+$("#years").value, num_paths:+$("#paths").value});
+      return pollJob(job_id, row);
+    }));
+    render(out[0], out[1]);
+    loadHistory();
+  }catch(e){ toast(e.message); }
+  finally{ busy=false; btn.textContent="Run simulation"; updateBudget(); }
+}
+
+/* ---------------- rendering ---------------- */
+let SHORT = "";
+function kpi(cls,label,v,stress){
+  const delta = stress!=null ? `${SHORT}: ${inr(stress)} (${((stress-v)/Math.abs(v||1)*100).toFixed(0)}%)` : "";
+  return `<div class="kpi ${cls} up"><small>${label}</small><div class="v">${inr(v)}</div><div class="d">${delta}</div></div>`;
+}
+function render(b, s){
+  $("#results").style.display="flex";
+  SHORT = s ? s.scenario_label.split(" (")[0] : "";
+  $("#kpis").innerHTML = [
+    kpi("best","Best case (top 10%)",b.best_case,s&&s.best_case),
+    kpi("med","Most likely (median)",b.median_case,s&&s.median_case),
+    kpi("worst","Worst case (bottom 10%)",b.worst_case,s&&s.worst_case),
+    `<div class="kpi up"><small>Value at risk (95%)</small><div class="v">${inr(b.var_95)}</div>
+     <div class="d m">Risk of running out of money: ${b.ruin_probability}%${s?` <span style="color:var(--warn)">(${s.ruin_probability}% stressed)</span>`:""}</div></div>`
+  ].join("");
+  $("#chartNote").textContent = `${b.num_paths.toLocaleString()} simulations · ${b.years} years`;
+
+  const grid="rgba(255,255,255,.07)", tick="#9aa4bf";
+  const labels=["Now",...b.yearly.years];
+  const ser = (r,key)=>[r.start_net_worth,...r.yearly[key]];
+  Object.values(charts).forEach(c=>c.destroy());
+  const ds=[
+    {label:"Best (90th)",data:ser(b,"p90"),borderColor:"rgba(52,211,153,.95)",borderWidth:1.5,pointRadius:0,fill:false},
+    {label:"Worst (10th)",data:ser(b,"p10"),borderColor:"rgba(248,113,113,.95)",borderWidth:1.5,pointRadius:0,fill:"-1",backgroundColor:"rgba(96,165,250,.12)"},
+    {label:"Median",data:ser(b,"p50"),borderColor:"#60a5fa",borderWidth:3,pointRadius:0}
+  ];
+  if (s){
+    ds.push({label:"Median: "+SHORT,data:ser(s,"p50"),borderColor:"#fb923c",borderWidth:3,borderDash:[7,4],pointRadius:0});
+    ds.push({label:"Worst: "+SHORT,data:ser(s,"p10"),borderColor:"rgba(251,146,60,.7)",borderWidth:1.5,borderDash:[3,3],pointRadius:0});
+  }
+  charts.fan = new Chart($("#fan"),{type:"line",data:{labels,datasets:ds},options:{
+    responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
+    plugins:{legend:{labels:{color:tick,boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:c=>c.dataset.label+": "+inr(c.parsed.y)}}},
+    scales:{x:{ticks:{color:tick},grid:{color:grid}},y:{ticks:{color:tick,callback:v=>inr(v)},grid:{color:grid}}}}});
+
+  charts.hist = new Chart($("#hist"),{type:"bar",data:{labels:b.histogram.centers.map(inr),datasets:[{label:"Futures",data:b.histogram.counts,backgroundColor:"rgba(96,165,250,.75)",borderRadius:5}]},options:{
+    responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:i=>"About "+i[0].label,label:c=>c.parsed.y+" of "+b.num_paths+" futures"}}},
+    scales:{x:{ticks:{color:tick,maxTicksLimit:6},grid:{display:false}},y:{ticks:{color:tick},grid:{color:grid}}}}});
+
+  const gl=$("#goalList");
+  if (!b.goals.length){ gl.innerHTML='<div class="empty" style="padding:10px">Add a goal to see how likely you are to reach it.</div>'; }
+  else gl.innerHTML = b.goals.map((g,i)=>{
+    const sg = s && s.goals[i];
+    const col = p => p>=70?"var(--good)":p>=40?"var(--warn)":"var(--bad)";
+    return `<div class="goal"><div class="top"><span>${esc(g.name)} · ${inr(g.target_amount)} by ${g.target_year}</span>
+      <span style="color:${col(g.probability)}">${g.probability}%${sg?` <span style="color:var(--warn);font-weight:500">(${sg.probability}% stressed)</span>`:""}</span></div>
+      <div class="track"><div class="fill" style="width:${g.probability}%;background:${col(g.probability)}"></div></div></div>`;
+  }).join("");
+}
+
+/* ---------------- history ---------------- */
+async function loadHistory(){
+  const name=$("#name").value.trim(); if(!name) return;
+  try{
+    const {jobs}=await api("/history/"+encodeURIComponent(slug(name)));
+    if(!jobs.length){ $("#history").innerHTML='<div class="empty">No runs yet.</div>'; return; }
+    $("#history").innerHTML = `<table><tr><th>When</th><th>Scenario</th><th>Years</th><th>Median</th><th>Goals</th><th>Status</th><th></th></tr>`+
+      jobs.map(j=>`<tr><td>${new Date(j.created_at).toLocaleString([], {day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}</td>
+      <td>${SCEN[j.scenario]||j.scenario}</td><td>${j.years}</td><td>${j.summary?inr(j.summary.median_case):"N/A"}</td>
+      <td>${j.summary&&j.summary.goal_probability!=null?j.summary.goal_probability+"%":"N/A"}</td>
+      <td><span class="badge b-${j.status}">${j.status}</span></td>
+      <td>${j.status==="DONE"?`<button class="ghost small" onclick="viewJob('${j.job_id}')">View</button>`:""}</td></tr>`).join("")+"</table>";
+  }catch(e){}
+}
+async function viewJob(id){
+  try{ const j=await api("/result/"+id); render(j.result); window.scrollTo({top:0,behavior:"smooth"}); }catch(e){ toast(e.message); }
+}
+
+/* ---------------- 3D tilt on the small glass cards ---------------- */
+const REDUCED = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+(function(){
+  if (REDUCED) return;
+  const sel = ".kpi,.strip .s,.mini div";
+  document.addEventListener("pointermove", e => {
+    if (e.pointerType === "touch") return;
+    const el = e.target.closest && e.target.closest(sel); if (!el) return;
+    const r = el.getBoundingClientRect(), x = (e.clientX - r.left)/r.width, y = (e.clientY - r.top)/r.height;
+    el.style.setProperty("--gx", (x*100).toFixed(0) + "%"); el.style.setProperty("--gy", (y*100).toFixed(0) + "%");
+    el.style.transform = `perspective(900px) rotateX(${((.5-y)*15).toFixed(2)}deg) rotateY(${((x-.5)*20).toFixed(2)}deg) translateZ(16px)`;
+  });
+  document.addEventListener("pointerout", e => {
+    const el = e.target.closest && e.target.closest(sel);
+    if (el && !el.contains(e.relatedTarget)) el.style.transform = "";
+  });
+})();
+
+/* ---------------- floating scene: ring slices + cursor parallax ---------------- */
+const Scene = (function(){
+  const scene = document.getElementById("scene");
+  if (!scene) return {tick(){}};
+  const ring = scene.querySelector(".ring3d");
+  if (ring) for (let k = -5; k <= 5; k++){
+    const s = document.createElement("i");
+    s.style.setProperty("--z", (k*2.6) + "px");
+    s.style.setProperty("--dk", (Math.abs(k)/5*.38).toFixed(2));   // outer slices darker, so the band reads as round
+    ring.appendChild(s);
+  }
+  const items = [...scene.querySelectorAll(".pl")].map(el => ({el, d:+el.dataset.d || 30, x:0, y:0}));
+  let mx = 0, my = 0;
+  if (!REDUCED) addEventListener("pointermove", e => { mx = e.clientX/innerWidth*2 - 1; my = e.clientY/innerHeight*2 - 1; }, {passive:true});
+  return {tick(){
+    if (REDUCED) return;
+    const sy = window.scrollY || 0;
+    for (const it of items){
+      const tx = -mx*it.d, ty = -my*it.d*.7 - sy*it.d/1400;   // deeper objects move more, and drift as you scroll
+      it.x += (tx - it.x)*.07; it.y += (ty - it.y)*.07;
+      it.el.style.transform = `translate3d(${it.x.toFixed(2)}px,${it.y.toFixed(2)}px,0)`;
+    }
+  }};
+})();
+
+/* ---------------- 3D wealth skyline (Investment plan tab) ---------------- */
+const Sky = (function(){
+  const stage = $("#sky"), world = $("#skyWorld"), read = $("#skyRead"), empty = $("#skyEmpty");
+  const HOME = {yaw:-30, pitch:-26}, H = 205;
+  let rows = null, pending = null, n = 0, geo = null, segs = [], waves = [], labs = [];
+  let yaw = HOME.yaw, pitch = HOME.pitch, tYaw = yaw, tPitch = pitch;
+  let sel = -1, hov = -1, hot = -1, drag = null, idle = 0, fit = 1, lastW = 0;
+
+  const shown = () => stage.offsetWidth > 0;
+  const fmt = v => inr(v);
+
+  function makeSeg(cls, i){
+    const g = document.createElement("div");
+    g.className = "sk-sg " + cls; g.dataset.i = i;
+    g.innerHTML = '<i class="fr" data-i="'+i+'"></i><i class="bk" data-i="'+i+'"></i><i class="lf" data-i="'+i+'"></i><i class="rt" data-i="'+i+'"></i><i class="tp" data-i="'+i+'"></i>';
+    return g;
+  }
+  function build(){
+    n = rows.length;
+    const pitchX = Math.min(54, 560/n);
+    const bw = Math.max(5, Math.min(40, pitchX*.72)), bd = Math.max(8, Math.min(40, bw*1.15));
+    const span = n*pitchX;
+    geo = {pitchX, bw, bd, span, FW: span + 110, FD: bd + 150};
+    world.style.setProperty("--bw", bw + "px"); world.style.setProperty("--bd", bd + "px");
+    world.innerHTML = "";
+    const floor = document.createElement("div"); floor.className = "sk-floor";
+    floor.style.cssText = `left:${-geo.FW/2}px;top:${-geo.FD/2}px;width:${geo.FW}px;height:${geo.FD}px`;
+    world.appendChild(floor);
+    const wall = document.createElement("div"); wall.className = "sk-wall";
+    wall.style.cssText = `left:${-geo.FW/2}px;top:${-(H + 28)}px;width:${geo.FW}px;height:${H + 28}px;transform:translateZ(${-geo.FD/2}px)`;
+    waves = [];
+    for (let k = 1; k <= 4; k++){
+      const l = document.createElement("b"); l.style.bottom = (k/4*H) + "px";
+      const s = document.createElement("span"); l.appendChild(s); wall.appendChild(l); waves.push(s);
+    }
+    world.appendChild(wall);
+    labs = [];
+    const step = Math.ceil(n/12);
+    for (let i = 0; i < n; i += step){
+      const l = document.createElement("div"); l.className = "sk-lab";
+      l.style.transform = `translate3d(${(i - (n-1)/2)*pitchX}px,2px,${bd/2 + 20}px) rotateX(90deg)`;
+      world.appendChild(l); labs.push([l, i]);
+    }
+    segs = [];
+    for (let i = 0; i < n; i++){
+      const a = makeSeg("inv", i), b = makeSeg("gain", i);
+      const x = (i - (n-1)/2)*pitchX;
+      a.style.transform = `translate3d(${x}px,0,0) scaleY(.004)`;
+      b.style.transform = `translate3d(${x}px,0,0) scaleY(.004)`;
+      a.style.transitionDelay = b.style.transitionDelay = (i*(500/n)).toFixed(0) + "ms";
+      if (i === n-1){ a.classList.add("last"); b.classList.add("last"); }
+      world.appendChild(a); world.appendChild(b); segs.push([a, b]);
+    }
+    hot = -1;
+    void world.offsetWidth;   // commit the flat starting state so the bars grow in
+  }
+  function update(){
+    const max = Math.max(1, ...rows.map(r => r.val));
+    waves.forEach((s, k) => s.textContent = fmt(max*(k+1)/4));
+    labs.forEach(([l, i]) => l.textContent = rows[i].age);
+    rows.forEach((r, i) => {
+      const x = (i - (n-1)/2)*geo.pitchX;
+      const invH = Math.max(0, Math.min(r.invested, r.val))/max*H, gainH = Math.max(0, r.val - r.invested)/max*H;
+      const [a, b] = segs[i];
+      a.style.transform = `translate3d(${x}px,0,0) scaleY(${Math.max(invH, .5)/100})`;
+      b.style.transform = `translate3d(${x}px,${-invH}px,0) scaleY(${Math.max(gainH, .01)/100})`;
+      b.style.visibility = gainH < .5 ? "hidden" : "visible";
+    });
+    if (sel < 0 || sel >= n) sel = n - 1;
+    refresh();
+  }
+  function refresh(){
+    const k = hov >= 0 ? hov : sel;
+    if (k !== hot){
+      if (hot >= 0 && segs[hot]) segs[hot].forEach(s => s.classList.remove("hot"));
+      if (segs[k]) segs[k].forEach(s => s.classList.add("hot"));
+      hot = k;
+    }
+    const r = rows[k]; if (!r) return;
+    read.innerHTML = `<div class="h"><b>Age ${r.age}</b><span>${r.label === "Now" ? "Today" : r.label}</span></div>
+      <div class="r"><i style="background:#4f9cf0"></i>Invested<b>${fmt(Math.min(r.invested, r.val))}</b></div>
+      <div class="r"><i style="background:#34d399"></i>Gain<b>${fmt(r.val - r.invested)}</b></div>
+      <div class="t"><span>Portfolio</span><span>${fmt(r.val)}</span></div>`;
+  }
+  function apply(){
+    rows = pending; pending = null;
+    stage.classList.remove("none");
+    if (!geo || rows.length !== n) build();
+    measure(true); update();
+  }
+  function measure(force){
+    const w = stage.clientWidth;
+    if (!force && w === lastW) return;
+    lastW = w; fit = Math.min(.92, (w - 40)/(geo ? geo.FW + 120 : 700));
+  }
+
+  /* pointer: drag to rotate, hover or tap to read a bar */
+  const idx = el => { const t = el && el.closest && el.closest("[data-i]"); return t ? +t.dataset.i : -1; };
+  stage.addEventListener("pointerdown", e => {
+    if (!rows || e.target.closest("button")) return;
+    drag = {x:e.clientX, y:e.clientY, yaw:tYaw, pitch:tPitch, moved:false, i:idx(e.target), touch:e.pointerType === "touch"};
+    try{ stage.setPointerCapture(e.pointerId); }catch(_){}
+  });
+  stage.addEventListener("pointermove", e => {
+    if (drag){
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (!drag.moved && Math.hypot(dx, dy) > 4){ drag.moved = true; stage.classList.add("drag"); setHover(-1); }
+      if (drag.moved){
+        tYaw = drag.yaw + dx*.45;
+        if (!drag.touch) tPitch = Math.max(-86, Math.min(-3, drag.pitch + dy*.3));
+      }
+    } else if (rows && e.pointerType !== "touch") setHover(idx(e.target));
+  });
+  const end = () => {
+    if (drag && !drag.moved && drag.i >= 0){ sel = drag.i; refresh(); }
+    drag = null; stage.classList.remove("drag");
+  };
+  stage.addEventListener("pointerup", end);
+  stage.addEventListener("pointercancel", end);
+  stage.addEventListener("pointerleave", () => { if (!drag) setHover(-1); });
+  function setHover(i){ if (i !== hov){ hov = i; if (rows) refresh(); } }
+  function home(){ tYaw = HOME.yaw; tPitch = HOME.pitch; }
+  $("#skyReset").addEventListener("click", home);
+  stage.addEventListener("keydown", e => {
+    const k = e.key; if (!rows) return;
+    if (k === "ArrowLeft") tYaw -= 8; else if (k === "ArrowRight") tYaw += 8;
+    else if (k === "ArrowUp") tPitch = Math.max(-86, tPitch - 6); else if (k === "ArrowDown") tPitch = Math.min(-3, tPitch + 6);
+    else if (k === "Home") home(); else return;
+    e.preventDefault();
+  });
+
+  return {
+    set(r){ pending = r; if (shown()) apply(); },
+    clear(msg){ rows = pending = null; n = 0; geo = null; world.innerHTML = ""; empty.textContent = msg; stage.classList.add("none"); },
+    flush(){ if (pending && shown()) apply(); },
+    tick(now){
+      if (!rows || !shown()) return;
+      measure(false);
+      const calm = REDUCED || drag || hov >= 0;
+      idle += ((calm ? 0 : 1) - idle)*.04;
+      yaw += (tYaw - yaw)*.18; pitch += (tPitch - pitch)*.18;
+      const y = yaw + Math.sin(now/2200)*7*idle;
+      world.style.transform = `scale3d(${fit},${fit},${fit}) rotateX(${pitch.toFixed(2)}deg) rotateY(${y.toFixed(2)}deg)`;
+    }
+  };
+})();
+
+(function loop(now){ Scene.tick(); Sky.tick(now); requestAnimationFrame(loop); })(0);
+
+/* ---------------- boot ---------------- */
+(async function init(){
+  restorePlanInputs();
+  show(TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "sim");
+  let uid=null; try{ uid=localStorage.getItem("finverse_uid"); }catch(e){}
+  if (uid){
+    try{ const r=await api("/twin/"+encodeURIComponent(uid)); fillTwin(r.twin); renderDNA(r.dna); loadHistory(); return; }catch(e){}
+  }
+  fillDemo();
+})();
+</script>
+</body>
+</html>
