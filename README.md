@@ -1,5 +1,7 @@
 # FinVerse - Financial Digital Twin & Scenario Simulation Platform
 
+[🌐 Live Demo - FinVerse | Your Financial Digital Twin](https://d36le3iyrjyt87.cloudfront.net/?#sim)
+
 VCC (Cloud Computing) course project. FinVerse turns a user's financial profile into a **digital twin**, then
 simulates thousands of possible futures (Monte Carlo) and stress-tests them with **crash scenarios** - all on a
 serverless AWS architecture.
